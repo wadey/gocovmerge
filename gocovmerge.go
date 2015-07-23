@@ -13,37 +13,61 @@ import (
 	"golang.org/x/tools/cover"
 )
 
-func mergeProfileBlock(p *cover.Profile, pb cover.ProfileBlock) {
+func mergeProfiles(p *cover.Profile, merge *cover.Profile) {
+	if p.Mode != merge.Mode {
+		log.Fatalf("cannot merge profiles with different modes")
+	}
+	// Since the blocks are sorted, we can keep track of where the last block
+	// was inserted and only look at the blocks after that as targets for merge
+	startIndex := 0
+	for _, b := range merge.Blocks {
+		startIndex = mergeProfileBlock(p, b, startIndex)
+	}
+}
+
+func mergeProfileBlock(p *cover.Profile, pb cover.ProfileBlock, startIndex int) int {
 	var inserted, combined int
-	i := sort.Search(len(p.Blocks), func(i int) bool {
-		pi := p.Blocks[i]
+	sortFunc := func(i int) bool {
+		pi := p.Blocks[i+startIndex]
 		return pi.StartLine >= pb.StartLine && (pi.StartLine != pb.StartLine || pi.StartCol >= pb.StartCol)
-	})
+	}
+
+	i := 0
+	if sortFunc(i) != true {
+		i = sort.Search(len(p.Blocks)-startIndex, sortFunc)
+	}
+	i += startIndex
 	if i < len(p.Blocks) && p.Blocks[i].StartLine == pb.StartLine && p.Blocks[i].StartCol == pb.StartCol {
-		// TODO validate ends match
+		if p.Blocks[i].EndLine != pb.EndLine || p.Blocks[i].EndCol != pb.EndCol {
+			log.Fatalf("OVERLAP MERGE: %v %v %v", p.FileName, p.Blocks[i], pb)
+		}
 		p.Blocks[i].Count += pb.Count
 		combined++
 	} else {
-		// TODO validate doesn't overlap with the adjacent blocks
+		if i > 0 {
+			pa := p.Blocks[i-1]
+			if pa.EndLine >= pb.EndLine && (pa.EndLine != pb.EndLine || pa.EndCol > pb.EndCol) {
+				log.Fatalf("OVERLAP BEFORE: %v %v %v", p.FileName, pa, pb)
+			}
+		}
+		if i < len(p.Blocks)-1 {
+			pa := p.Blocks[i+1]
+			if pa.StartLine <= pb.StartLine && (pa.StartLine != pb.StartLine || pa.StartCol < pb.StartCol) {
+				log.Fatalf("OVERLAP AFTER: %v %v %v", p.FileName, pa, pb)
+			}
+		}
 		p.Blocks = append(p.Blocks, cover.ProfileBlock{})
 		copy(p.Blocks[i+1:], p.Blocks[i:])
 		p.Blocks[i] = pb
 		inserted++
 	}
+	return i + 1
 }
 
-func mergeProfile(profiles []*cover.Profile, p *cover.Profile) []*cover.Profile {
+func addProfile(profiles []*cover.Profile, p *cover.Profile) []*cover.Profile {
 	i := sort.Search(len(profiles), func(i int) bool { return profiles[i].FileName >= p.FileName })
 	if i < len(profiles) && profiles[i].FileName == p.FileName {
-		if profiles[i].Mode != p.Mode {
-			log.Fatalf("cannot merge profiles with different modes")
-		}
-		for _, b := range p.Blocks {
-			// TODO we can be smarter if we keep track of where we are while merging
-			// that way we don't have to re-do the binary search from the start for each entry
-			mergeProfileBlock(profiles[i], b)
-		}
-		// log.Printf("merged: %v", p.FileName)
+		mergeProfiles(profiles[i], p)
 	} else {
 		profiles = append(profiles, nil)
 		copy(profiles[i+1:], profiles[i:])
@@ -75,7 +99,7 @@ func main() {
 			log.Fatalf("failed to parse profiles: %v", err)
 		}
 		for _, p := range profiles {
-			merged = mergeProfile(merged, p)
+			merged = addProfile(merged, p)
 		}
 	}
 
