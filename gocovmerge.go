@@ -26,7 +26,6 @@ func mergeProfiles(p *cover.Profile, merge *cover.Profile) {
 }
 
 func mergeProfileBlock(p *cover.Profile, pb cover.ProfileBlock, startIndex int) int {
-	var inserted, combined int
 	sortFunc := func(i int) bool {
 		pi := p.Blocks[i+startIndex]
 		return pi.StartLine >= pb.StartLine && (pi.StartLine != pb.StartLine || pi.StartCol >= pb.StartCol)
@@ -42,7 +41,6 @@ func mergeProfileBlock(p *cover.Profile, pb cover.ProfileBlock, startIndex int) 
 			log.Fatalf("OVERLAP MERGE: %v %v %v", p.FileName, p.Blocks[i], pb)
 		}
 		p.Blocks[i].Count |= pb.Count
-		combined++
 	} else {
 		if i > 0 {
 			pa := p.Blocks[i-1]
@@ -59,7 +57,6 @@ func mergeProfileBlock(p *cover.Profile, pb cover.ProfileBlock, startIndex int) 
 		p.Blocks = append(p.Blocks, cover.ProfileBlock{})
 		copy(p.Blocks[i+1:], p.Blocks[i:])
 		p.Blocks[i] = pb
-		inserted++
 	}
 	return i + 1
 }
