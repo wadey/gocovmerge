@@ -41,7 +41,7 @@ func mergeProfileBlock(p *cover.Profile, pb cover.ProfileBlock, startIndex int) 
 		if p.Blocks[i].EndLine != pb.EndLine || p.Blocks[i].EndCol != pb.EndCol {
 			log.Fatalf("OVERLAP MERGE: %v %v %v", p.FileName, p.Blocks[i], pb)
 		}
-		p.Blocks[i].Count += pb.Count
+		p.Blocks[i].Count |= pb.Count
 		combined++
 	} else {
 		if i > 0 {
