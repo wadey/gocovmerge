@@ -40,7 +40,14 @@ func mergeProfileBlock(p *cover.Profile, pb cover.ProfileBlock, startIndex int) 
 		if p.Blocks[i].EndLine != pb.EndLine || p.Blocks[i].EndCol != pb.EndCol {
 			log.Fatalf("OVERLAP MERGE: %v %v %v", p.FileName, p.Blocks[i], pb)
 		}
-		p.Blocks[i].Count |= pb.Count
+		switch p.Mode {
+		case "set":
+			p.Blocks[i].Count |= pb.Count
+		case "count", "atomic":
+			p.Blocks[i].Count += pb.Count
+		default:
+			log.Fatalf("unsupported covermode: '%s'", p.Mode)
+		}
 	} else {
 		if i > 0 {
 			pa := p.Blocks[i-1]
