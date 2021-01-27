@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strconv"
 
 	"golang.org/x/tools/cover"
 )
@@ -81,12 +82,22 @@ func addProfile(profiles []*cover.Profile, p *cover.Profile) []*cover.Profile {
 }
 
 func dumpProfiles(profiles []*cover.Profile, out io.Writer) {
+	f, err := os.Create("Coverage.cov")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
 	if len(profiles) == 0 {
 		return
 	}
+	mode := "mode: " + profiles[0].Mode + "\n"
+	f.WriteString(mode)
 	fmt.Fprintf(out, "mode: %s\n", profiles[0].Mode)
 	for _, p := range profiles {
 		for _, b := range p.Blocks {
+			allCover := ""
+			allCover = p.FileName + ":" + strconv.Itoa(b.StartLine) + "." + strconv.Itoa(b.StartCol) + "," + strconv.Itoa(b.EndLine) + "." + strconv.Itoa(b.EndCol) + " " + strconv.Itoa(b.NumStmt) + " " + strconv.Itoa(b.Count) + "\n"
+			f.WriteString(allCover)
 			fmt.Fprintf(out, "%s:%d.%d,%d.%d %d %d\n", p.FileName, b.StartLine, b.StartCol, b.EndLine, b.EndCol, b.NumStmt, b.Count)
 		}
 	}
