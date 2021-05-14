@@ -17,6 +17,7 @@ func mergeProfiles(p, merge *cover.Profile) {
 	if p.Mode != merge.Mode {
 		log.Fatalf("cannot merge profiles with different modes")
 	}
+
 	// Since the blocks are sorted, we can keep track of where the last block
 	// was inserted and only look at the blocks after that as targets for merge
 	startIndex := 0
