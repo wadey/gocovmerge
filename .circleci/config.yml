@@ -1,0 +1,28 @@
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: alexfalkowski/go:1.16
+    steps:
+      - checkout
+      - run: make dep
+      - run: make lint
+  release:
+    docker:
+      - image: alexfalkowski/release:2.0
+    steps:
+      - checkout
+      - run: release.sh
+
+workflows:
+  gocovmerge:
+    jobs:
+      - build
+      - release:
+          context: gh
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
