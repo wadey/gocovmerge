@@ -6,3 +6,9 @@ help: ## Display this help
 
 outdated: ## Check outdated deps
 	go list -u -m -mod=mod -json all | go-mod-outdated -update -direct
+
+lint: ## Lint all the code
+	golangci-lint run --timeout 5m
+
+fix-lint: ## Fix the lint issues in the code (if possible)
+	golangci-lint run --timeout 5m --fix
