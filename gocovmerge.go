@@ -82,20 +82,55 @@ func addProfile(profiles []*cover.Profile, p *cover.Profile) []*cover.Profile {
 
 func dumpProfiles(profiles []*cover.Profile, out io.Writer) {
 	if len(profiles) == 0 {
+		fmt.Println("no lines to print!")
 		return
 	}
-	fmt.Fprintf(out, "mode: %s\n", profiles[0].Mode)
+
+	f, err := os.Create("coverage.out")
+	if err != nil {
+		fmt.Println("error creating coverage.out: ", err.Error())
+		return
+	}
+	defer f.Close()
+
+	f.WriteString(fmt.Sprintf("mode: %s\n", profiles[0].Mode))
+
 	for _, p := range profiles {
 		for _, b := range p.Blocks {
-			fmt.Fprintf(out, "%s:%d.%d,%d.%d %d %d\n", p.FileName, b.StartLine, b.StartCol, b.EndLine, b.EndCol, b.NumStmt, b.Count)
+			f.WriteString(fmt.Sprintf("%s:%d.%d,%d.%d %d %d\n", p.FileName, b.StartLine, b.StartCol, b.EndLine, b.EndCol, b.NumStmt, b.Count))
 		}
 	}
+}
+
+func printCoverage(profiles []*cover.Profile) {
+	linesCovered := 0
+	linesNotCovered := 0
+
+	for _, p := range profiles {
+		for _, b := range p.Blocks {
+			if b.Count == 0 {
+				linesNotCovered += b.NumStmt
+			} else {
+				linesCovered += b.NumStmt
+			}
+		}
+	}
+
+	totalLines := linesCovered + linesNotCovered
+	coverage := 100.0 * float32(linesCovered) / float32(totalLines)
+
+	fmt.Printf("coverage: %v%%\n", coverage)
 }
 
 func main() {
 	flag.Parse()
 
 	var merged []*cover.Profile
+
+	if len(flag.Args()) == 0 {
+		fmt.Println("usage: go run gocovmerge.go /path/to/coverage/file1 /path/to/coverage/file2 /you/can/have/as/many/files/as/you/want/file3")
+		return
+	}
 
 	for _, file := range flag.Args() {
 		profiles, err := cover.ParseProfiles(file)
@@ -108,4 +143,5 @@ func main() {
 	}
 
 	dumpProfiles(merged, os.Stdout)
+	printCoverage(merged)
 }
